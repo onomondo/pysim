@@ -38,7 +38,7 @@ class PcscSimLink(LinkBase):
         self._reader = r[reader_number]
         self._con = self._reader.createConnection()
 
-        if pyscard_apdu_tracer == True:
+        if pyscard_apdu_tracer == "pyscard":
             # attach the console tracer
             self.observer = ConsoleCardConnectionObserver()
             self.observedcard = self._con.addObserver(self.observer)
