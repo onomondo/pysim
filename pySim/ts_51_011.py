@@ -40,14 +40,40 @@ from struct import pack, unpack
 from typing import Tuple
 from pySim.tlv import *
 from pySim.utils import *
+
+#ETSI TS 131 102
 MF_num = '3F00'
 
 DF_num = {
     'TELECOM': '7F10',
-
     'GSM': '7F20',
-    'IS-41': '7F22',
+    'IS-41': '7F22', # Reserved for ANSI, American National Standards Institute, USA
     'FP-CTS': '7F23',
+    'ADF_USIM': '7FF0',
+    'current_active_ADF': '7FFF',
+
+    'PHONEBOOK': '5F3A',
+    'GSM-Access': '5F3B',
+    'MexE': '5F3C',
+    'WLAN': '5F40',
+    'HNB': '5F50',
+    'SoLSA': '5F70',
+    'BCAST': '5F80',
+    'ProSe': '5F90',
+    'ACDC': '5FA0',
+    'TV': '5FB0',
+    '5GS': '5FC0',
+    'SAIP': '5FD0',
+
+    'DSC1800': '7F21',
+    'CD': '7F11',
+    'T_IA/EIA-136': '7F24', # Reserved for TIA, Telecommunications Industry Association, USA
+    'TIA/EIA-95': '7F25', # Reserved for 3GPP2, 3rd Generation Partnership Project 2
+    'GSMA': '7F26',
+
+    'IDEN': '7F31', # used in the iDEN specification by Motorola, Inc, USA
+    'PDC': '7F80',  # used in the PDC specification by ARIB, Association of Radio Industries and Businesses, Japan
+    'TETRA': '7F90', # used by TETRA Association, Terrestrial Trunked Radio
 
     'GRAPHICS': '5F50',
 
@@ -58,18 +84,20 @@ DF_num = {
 
     'EIA/TIA-553': '5F40',
     'CTS': '5F60',
-    'SOLSA': '5F70',
 
     'MExE': '5F3C',
 }
 
 EF_num = {
     # MF
-    'ICCID': '2FE2',
-    'ELP': '2F05',
     'DIR': '2F00',
+    'PL': '2F05',
+    'ARR_MF': '2F06',
+    'ICCID': '2FE2',
+    'UMPC': '2F08',
 
     # DF_TELECOM
+    'ARR_Telecom': '6F06',
     'ADN': '6F3A',
     'FDN': '6F3B',
     'SMS': '6F3C',
@@ -87,6 +115,11 @@ EF_num = {
     'EXT4': '6F4E',
     'CMI': '6F58',
     'ECCP': '6F4F',
+    'PSISMSC': '6FE5',
+    'RMA': '6F53',
+    'ICE_DN': '6FE0',
+    'ICE_EF': '6FE1',
+
 
     # DF_GRAPHICS
     'IMG': '4F20',
@@ -183,7 +216,7 @@ DF = {
 
 EF = {
     'ICCID':  [MF_num, EF_num['ICCID']],
-    'ELP':    [MF_num, EF_num['ELP']],
+    'PL':    [MF_num, EF_num['PL']],
     'DIR':    [MF_num, EF_num['DIR']],
 
     'ADN':    DF['TELECOM']+[EF_num['ADN']],
