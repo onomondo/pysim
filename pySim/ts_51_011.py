@@ -140,6 +140,7 @@ EF_num = {
     #  Some EFs reside under ADF_USIM with the same FID. Hence, for sake of stating them here, they are commented out
 
     'LP': '6F05',
+    'ARR_GSM': '6F06',
     # 'IMSI': '6F07',
     # 'Kc': '6F20',
     # 'DCK': '6F2C',
@@ -253,7 +254,7 @@ EF_num = {
     "THRESHOLD": "6F5C",
     "OPLMNwACT": "6F61",
     "HPLMNwAcT": "6F62",
-    "ARR": "6F06",
+    "ARR_ADF_USIM": "6F06",
     "NETPAR": "6FC4",
     "PNN": "6FC5",
     "OPL": "6FC6",
@@ -345,7 +346,11 @@ EF = {
     'PL':     [MF_num, EF_num['PL']],
     'DIR':    [MF_num, EF_num['DIR']],
 
+    'ARR_MF': [MF_num, EF_num['ARR_MF']],
     'ARR_Telecom':  DF['TELECOM']+[EF_num['ARR_Telecom']],
+    'ARR_GSM':  DF['GSM']+[EF_num['ARR_GSM']],
+    'ARR_ADF_USIM':  DF['ADF_USIM']+[EF_num['ARR_ADF_USIM']],
+
     'ADN':          DF['TELECOM']+[EF_num['ADN']],
     'FDN':          DF['TELECOM']+[EF_num['FDN']],
     'SMS':          DF['TELECOM']+[EF_num['SMS']],
@@ -398,6 +403,7 @@ EF = {
     'BCCH':     DF['GSM']+[EF_num['BCCH']],
     'ACC':      DF['GSM']+[EF_num['ACC']],
     'FPLMN':    DF['GSM']+[EF_num['FPLMN']],
+    # 'FPLMN':    DF['ADF_USIM']+[EF_num['FPLMN']],
     'LOCI':     DF['GSM']+[EF_num['LOCI']],
     'AD':       DF['GSM']+[EF_num['AD']],
     'PHASE':    DF['GSM']+[EF_num['PHASE']],
