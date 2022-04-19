@@ -65,6 +65,9 @@ class SimCardCommands(object):
         tlv = fcp[skip:]
         return tlvparser.parse(tlv)
 
+    def parse_fcp(self, fcp):
+        return self.__parse_fcp(fcp)
+
     # Tell the length of a record by the card response
     # USIMs respond with an FCP template, which is different
     # from what SIMs responds. See also:
