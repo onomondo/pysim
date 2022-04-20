@@ -345,6 +345,7 @@ EF = {
     'ICCID':  [MF_num, EF_num['ICCID']],
     'PL':     [MF_num, EF_num['PL']],
     'DIR':    [MF_num, EF_num['DIR']],
+    'UMPC':   [MF_num, EF_num['UMPC']],
 
     'ARR_MF': [MF_num, EF_num['ARR_MF']],
     'ARR_Telecom':  DF['TELECOM']+[EF_num['ARR_Telecom']],
