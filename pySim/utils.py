@@ -30,6 +30,17 @@ from typing import Optional, List, Dict, Any, Tuple
 Hexstr = str
 
 
+
+def compare_list_dict(x, y):
+    """Compare two lists that containing dictionaries"""
+    if len(y) > len(x):
+        foo = x
+        x = y
+        y = foo
+
+    return [i for i in x if i not in y]
+
+
 def h2b(s: Hexstr) -> bytearray:
     """convert from a string of hex nibbles to a sequence of bytes"""
     return bytearray.fromhex(s)
