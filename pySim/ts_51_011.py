@@ -355,7 +355,7 @@ EF = {
     'ADN':          DF['TELECOM']+[EF_num['ADN']],
     'FDN':          DF['TELECOM']+[EF_num['FDN']],
     'SMS':          DF['TELECOM']+[EF_num['SMS']],
-    'CCP':          DF['TELECOM']+[EF_num['CCP']],
+    # 'CCP':          DF['TELECOM']+[EF_num['CCP']], #  There shall not be any EFCCP (with a file-id of '6F3D') under DFTELECOM because otherwise a GSM terminal could create inconsistencies within the phonebook.
     'MSISDN':       DF['TELECOM']+[EF_num['MSISDN']],
     'SMSP':         DF['TELECOM']+[EF_num['SMSP']],
     'SMSS':         DF['TELECOM']+[EF_num['SMSS']],
