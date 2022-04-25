@@ -141,7 +141,7 @@ EF_num = {
 
     'LP': '6F05',
     'ARR_GSM': '6F06',
-    # 'IMSI': '6F07',
+    'IMSI_GSM': '6F07',
     # 'Kc': '6F20',
     # 'DCK': '6F2C',
     'PLMNsel': '6F30',
@@ -204,7 +204,7 @@ EF_num = {
     # ADF_USIM
     "Kc": "4F20",
     "LI": "6F05",
-    "IMSI": "6F07",
+    "IMSI_USIM": "6F07",
     "Keys": "6F08",
     "KeysPS": "6F09",
     "PLMNwAcT": "6F60",
@@ -386,7 +386,8 @@ EF = {
     'TPRPK':    DF['MExE']+[EF_num['TPRPK']],
 
     'LP':       DF['GSM']+[EF_num['LP']],
-    'IMSI':     DF['GSM']+[EF_num['IMSI']],
+    'IMSI_GSM':     DF['GSM']+[EF_num['IMSI_GSM']],
+    'IMSI_USIM':DF['GSM']+[EF_num['IMSI_USIM']],
     'Kc':       DF['GSM']+[EF_num['Kc']],
     'DCK':      DF['GSM']+[EF_num['DCK']],
     'PLMNsel':  DF['GSM']+[EF_num['PLMNsel']],
