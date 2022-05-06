@@ -45,6 +45,7 @@ from pySim.utils import *
 MF_num = '3F00'
 
 DF_num = {
+    'MF': '3F00',
     'TELECOM': '7F10',
     'GSM': '7F20',
     'IS-41': '7F22', # Reserved for ANSI, American National Standards Institute, USA
@@ -317,6 +318,7 @@ EF_num = {
 }
 
 DF = {
+    'MF': [MF_num],
     'TELECOM':  [MF_num, DF_num['TELECOM']],
     'GSM':      [MF_num, DF_num['GSM']],
     'ADF_USIM': [MF_num, DF_num['ADF_USIM']],
