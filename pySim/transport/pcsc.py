@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-
+from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver
 from smartcard.CardConnection import CardConnection
 from smartcard.CardRequest import CardRequest
 from smartcard.Exceptions import NoCardException, CardRequestTimeoutException, CardConnectionException, CardConnectionException
@@ -30,13 +30,18 @@ from pySim.utils import h2i, i2h
 class PcscSimLink(LinkBase):
     """ pySim: PCSC reader transport link."""
 
-    def __init__(self, reader_number: int = 0, **kwargs):
+    def __init__(self, reader_number: int = 0, pyscard_apdu_tracer=None, **kwargs):
         super().__init__(**kwargs)
         r = readers()
         if reader_number >= len(r):
             raise ReaderError
         self._reader = r[reader_number]
         self._con = self._reader.createConnection()
+
+        if pyscard_apdu_tracer == True:
+            # attach the console tracer
+            self.observer = ConsoleCardConnectionObserver()
+            self.observedcard = self._con.addObserver(self.observer)
 
     def __del__(self):
         try:

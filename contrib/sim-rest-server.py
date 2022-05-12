@@ -35,7 +35,7 @@ class ApduPrintTracer(ApduTracer):
         pass
 
 def connect_to_card(slot_nr:int):
-    tp = PcscSimLink(slot_nr, apdu_tracer=ApduPrintTracer())
+    tp = PcscSimLink(slot_nr, pyscard_apdu_tracer=ApduPrintTracer())
     tp.connect()
 
     scc = SimCardCommands(tp)

@@ -227,7 +227,7 @@ def init_reader(opts, **kwargs) -> Optional[LinkBase]:
         if opts.pcsc_dev is not None:
             print("Using PC/SC reader interface")
             from pySim.transport.pcsc import PcscSimLink
-            sl = PcscSimLink(opts.pcsc_dev, **kwargs)
+            sl = PcscSimLink(reader_number=opts.pcsc_dev, pyscard_apdu_tracer=opts.console_apdu_logger, **kwargs)
         elif opts.osmocon_sock is not None:
             print("Using Calypso-based (OsmocomBB) reader interface")
             from pySim.transport.calypso import CalypsoSimLink
@@ -247,6 +247,5 @@ def init_reader(opts, **kwargs) -> Optional[LinkBase]:
         if str(e):
             print("Card reader initialization failed with exception:\n" + str(e))
         else:
-            print(
-                "Card reader initialization failed with an exception of type:\n" + str(type(e)))
+            print("Card reader initialization failed with an exception of type:\n" + str(type(e)))
         return None
