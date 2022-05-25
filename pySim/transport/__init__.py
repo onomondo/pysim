@@ -227,7 +227,7 @@ def init_reader(opts, **kwargs) -> Optional[LinkBase]:
         if opts.pcsc_dev is not None:
             print("Using PC/SC reader interface")
             from pySim.transport.pcsc import PcscSimLink
-            sl = PcscSimLink(reader_number=opts.pcsc_dev, pyscard_apdu_tracer=opts.apdu_logger, **kwargs)
+            sl = PcscSimLink(reader_number=opts.pcsc_dev, pyscard_apdu_tracer=getattr(opts, 'apdu_logger', None), **kwargs)
         elif opts.osmocon_sock is not None:
             print("Using Calypso-based (OsmocomBB) reader interface")
             from pySim.transport.calypso import CalypsoSimLink
