@@ -80,11 +80,11 @@ ts_102_22x_cmdset = CardCommandSet('TS 102 22x', [
 
 # ETSI TS 102 221 11.1.1.4.2
 class FileSize(BER_TLV_IE, tag=0x80):
-    _construct = GreedyInteger()
+    _construct = GreedyInteger(minlen=2)
 
 # ETSI TS 102 221 11.1.1.4.2
 class TotalFileSize(BER_TLV_IE, tag=0x81):
-    _construct = GreedyInteger()
+    _construct = GreedyInteger(minlen=2)
 
 # ETSI TS 102 221 11.1.1.4.3
 class FileDescriptor(BER_TLV_IE, tag=0x82):
@@ -190,10 +190,11 @@ class ShortFileIdentifier(BER_TLV_IE, tag=0x88):
     # of the TLV value field. In this case, bits b3 to b1 shall be set to 0
     class Shift3RAdapter(Adapter):
         def _decode(self, obj, context, path):
-            return obj >> 3
+            return int.from_bytes(obj, 'big') >> 3
         def _encode(self, obj, context, path):
-            return obj << 3
-    _construct = COptional(Shift3RAdapter(Byte))
+            val = int(obj) << 3
+            return val.to_bytes(1, 'big')
+    _construct = COptional(Shift3RAdapter(Bytes(1)))
 
 # ETSI TS 102 221 11.1.1.4.9
 class LifeCycleStatusInteger(BER_TLV_IE, tag=0x8A):
@@ -587,13 +588,13 @@ class EF_DIR(LinFixedEF):
         pass
 
     def __init__(self, fid='2f00', sfid=0x1e, name='EF.DIR', desc='Application Directory'):
-        super().__init__(fid, sfid=sfid, name=name, desc=desc, rec_len={5, 54})
+        super().__init__(fid, sfid=sfid, name=name, desc=desc, rec_len=(5, 54))
         self._tlv = EF_DIR.ApplicationTemplate
 
 # TS 102 221 Section 13.2
 class EF_ICCID(TransparentEF):
     def __init__(self, fid='2fe2', sfid=0x02, name='EF.ICCID', desc='ICC Identification'):
-        super().__init__(fid, sfid=sfid, name=name, desc=desc, size={10, 10})
+        super().__init__(fid, sfid=sfid, name=name, desc=desc, size=(10, 10))
 
     def _decode_hex(self, raw_hex):
         return {'iccid': dec_iccid(raw_hex)}
@@ -605,7 +606,7 @@ class EF_ICCID(TransparentEF):
 class EF_PL(TransRecEF):
     def __init__(self, fid='2f05', sfid=0x05, name='EF.PL', desc='Preferred Languages'):
         super().__init__(fid, sfid=sfid, name=name,
-                         desc=desc, rec_len=2, size={2, None})
+                         desc=desc, rec_len=2, size=(2, None))
 
     def _decode_record_bin(self, bin_data):
         if bin_data == b'\xff\xff':
@@ -685,19 +686,19 @@ class EF_ARR(LinFixedEF):
         @cmd2.with_argparser(LinFixedEF.ShellCommands.read_rec_dec_parser)
         def do_read_arr_record(self, opts):
             """Read one EF.ARR record in flattened, human-friendly form."""
-            (data, sw) = self._cmd.rs.read_record_dec(opts.record_nr)
-            data = self._cmd.rs.selected_file.flatten(data)
+            (data, sw) = self._cmd.lchan.read_record_dec(opts.record_nr)
+            data = self._cmd.lchan.selected_file.flatten(data)
             self._cmd.poutput_json(data, opts.oneline)
 
         @cmd2.with_argparser(LinFixedEF.ShellCommands.read_recs_dec_parser)
         def do_read_arr_records(self, opts):
             """Read + decode all EF.ARR records in flattened, human-friendly form."""
-            num_of_rec = self._cmd.rs.selected_file_num_of_rec()
+            num_of_rec = self._cmd.lchan.selected_file_num_of_rec()
             # collect all results in list so they are rendered as JSON list when printing
             data_list = []
             for recnr in range(1, 1 + num_of_rec):
-                (data, sw) = self._cmd.rs.read_record_dec(recnr)
-                data = self._cmd.rs.selected_file.flatten(data)
+                (data, sw) = self._cmd.lchan.read_record_dec(recnr)
+                data = self._cmd.lchan.selected_file.flatten(data)
                 data_list.append(data)
             self._cmd.poutput_json(data_list, opts.oneline)
 
@@ -705,7 +706,7 @@ class EF_ARR(LinFixedEF):
 # TS 102 221 Section 13.6
 class EF_UMPC(TransparentEF):
     def __init__(self, fid='2f08', sfid=0x08, name='EF.UMPC', desc='UICC Maximum Power Consumption'):
-        super().__init__(fid, sfid=sfid, name=name, desc=desc, size={5, 5})
+        super().__init__(fid, sfid=sfid, name=name, desc=desc, size=(5, 5))
         addl_info = FlagsEnum(Byte, req_inc_idle_current=1,
                               support_uicc_suspend=2)
         self._construct = Struct(

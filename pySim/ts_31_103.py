@@ -26,7 +26,8 @@ from pySim.filesystem import *
 from pySim.utils import *
 from pySim.tlv import *
 from pySim.ts_51_011 import EF_AD, EF_SMS, EF_SMSS, EF_SMSR, EF_SMSP
-from pySim.ts_31_102 import ADF_USIM, EF_FromPreferred, EF_UServiceTable
+from pySim.ts_31_102 import ADF_USIM, EF_FromPreferred
+from pySim.ts_31_102_telecom import EF_UServiceTable
 import pySim.ts_102_221
 from pySim.ts_102_221 import EF_ARR
 
@@ -107,7 +108,7 @@ class EF_IMPU(LinFixedEF):
 # TS 31.103 Section 4.2.7
 class EF_IST(EF_UServiceTable):
     def __init__(self, **kwargs):
-        super().__init__('6f07', 0x07, 'EF.IST', 'ISIM Service Table', {1, None}, EF_IST_map)
+        super().__init__('6f07', 0x07, 'EF.IST', 'ISIM Service Table', (1, None), EF_IST_map)
         # add those commands to the general commands of a TransparentEF
         self.shell_commands += [self.AddlShellCommands()]
 
@@ -131,7 +132,7 @@ class EF_IST(EF_UServiceTable):
             absent/deactivated.  This performs a consistency check to ensure that no services are activated
             for files that are not - and vice-versa, no files are activated for services that are not.  Error
             messages are printed for every inconsistency found."""
-            selected_file = self._cmd.rs.selected_file
+            selected_file = self._cmd.lchan.selected_file
             num_problems = selected_file.ust_service_check(self._cmd)
             self._cmd.poutput("===> %u service / file inconsistencies detected" % num_problems)
 
@@ -181,7 +182,7 @@ class EF_IMSConfigData(BerTlvEF):
     class ImsConfigData(BER_TLV_IE, tag=0x81):
         _construct = GreedyString
     # pylint: disable=undefined-variable
-    class ImsConfigDataCollection(TLV_IE_Collection, neted=[ImsConfigDataEncoding, ImsConfigData]):
+    class ImsConfigDataCollection(TLV_IE_Collection, nested=[ImsConfigDataEncoding, ImsConfigData]):
         pass
     def __init__(self, fid='6ff8', sfid=None, name='EF.IMSConfigData', desc='IMS Configuration Data', **kwargs):
         super().__init__(fid=fid, sfid=sfid, name=name, desc=desc, **kwargs)
@@ -248,7 +249,7 @@ class EF_MuDMiDConfigData(BerTlvEF):
     class MudMidConfigData(BER_TLV_IE, tag=0x81):
         _construct = GreedyString
     # pylint: disable=undefined-variable
-    class MudMidConfigDataCollection(TLV_IE_Collection, neted=[MudMidConfigDataEncoding, MudMidConfigData]):
+    class MudMidConfigDataCollection(TLV_IE_Collection, nested=[MudMidConfigDataEncoding, MudMidConfigData]):
         pass
     def __init__(self, fid='6ffe', sfid=None, name='EF.MuDMiDConfigData',
                  desc='MuD and MiD Configuration Data', **kwargs):

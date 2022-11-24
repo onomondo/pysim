@@ -16,7 +16,7 @@ network, and want to issue your own SIM/USIM cards for that network.
 Homepage and Manual
 -------------------
 
-Please visit the [official homepage](https://osmocom.org/projects/pysim/wiki) for usage instructions, manual and examples.
+Please visit the [official homepage](https://osmocom.org/projects/pysim/wiki) for usage instructions, manual and examples.  The user manual can also be built locally from this source code by ``cd docs && make html latexpdf`` for HTML and PDF format, respectively.
 
 Git Repository
 --------------
@@ -45,7 +45,7 @@ Please install the following dependencies:
 
 Example for Debian:
 ```
-apt-get install python3-pyscard python3-serial python3-pip python3-yaml
+apt-get install python3-pyscard python3-serial python3-pip python3-yaml python3-termcolor python3-colorlog
 pip3 install -r requirements.txt
 ```
 

@@ -52,7 +52,7 @@ def format_addr(addr: str, addr_type: str) -> str:
     return res
 
 
-class SimCard(object):
+class SimCard:
 
     name = 'SIM'
 
@@ -63,7 +63,7 @@ class SimCard(object):
 
     def reset(self):
         rc = self._scc.reset_card()
-        if rc is 1:
+        if rc == 1:
             return self._scc.get_atr()
         else:
             return None
@@ -347,6 +347,9 @@ class UsimCard(SimCard):
 
     def __init__(self, ssc):
         super(UsimCard, self).__init__(ssc)
+
+	# See also: ETSI TS 102 221, Table 9.3
+        self._adm_chv_num = 0xA0
 
     def read_ehplmn(self):
         (res, sw) = self._scc.read_binary(EF_USIM_ADF_map['EHPLMN'])

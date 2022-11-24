@@ -100,7 +100,7 @@ class Transcodable(abc.ABC):
 
     # not an abstractmethod, as it is only required if no _construct exists
     def _to_bytes(self):
-        raise NotImplementedError
+        raise NotImplementedError('%s._to_bytes' % type(self).__name__)
 
     def from_bytes(self, do: bytes):
         """Convert from binary bytes to internal representation. Store the decoded result
@@ -118,7 +118,7 @@ class Transcodable(abc.ABC):
 
     # not an abstractmethod, as it is only required if no _construct exists
     def _from_bytes(self, do: bytes):
-        raise NotImplementedError
+        raise NotImplementedError('%s._from_bytes' % type(self).__name__)
 
 
 class IE(Transcodable, metaclass=TlvMeta):
@@ -236,7 +236,7 @@ class TLV_IE(IE):
             return {}, b''
         (rawtag, remainder) = self.__class__._parse_tag_raw(do)
         if rawtag:
-            if rawtag != self.tag:
+            if rawtag != self._compute_tag():
                 raise ValueError("%s: Encountered tag %s doesn't match our supported tag %s" %
                                  (self, rawtag, self.tag))
             (length, remainder) = self.__class__._parse_len(remainder)

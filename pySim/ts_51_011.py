@@ -32,6 +32,7 @@ order to describe the files specified in the relevant ETSI + 3GPP specifications
 from pySim.profile import match_sim
 from pySim.profile import CardProfile
 from pySim.filesystem import *
+from pySim.ts_31_102_telecom import DF_PHONEBOOK, DF_MULTIMEDIA, DF_MCS, DF_V2X
 import enum
 from pySim.construct import *
 from construct import Optional as COptional
@@ -637,7 +638,7 @@ EF_SST_map = {
 # TS 51.011 Section 10.5.1
 class EF_ADN(LinFixedEF):
     def __init__(self, fid='6f3a', sfid=None, name='EF.ADN', desc='Abbreviated Dialing Numbers', **kwargs):
-        super().__init__(fid, sfid=sfid, name=name, desc=desc, rec_len={14, 30}, **kwargs)
+        super().__init__(fid, sfid=sfid, name=name, desc=desc, rec_len=(14, 30), **kwargs)
         self._construct = Struct('alpha_id'/COptional(GsmStringAdapter(Rpad(Bytes(this._.total_len-14)), codec='ascii')),
                                  'len_of_bcd'/Int8ub,
                                  'ton_npi'/TonNpi,
@@ -648,7 +649,7 @@ class EF_ADN(LinFixedEF):
 # TS 51.011 Section 10.5.5
 class EF_SMS(LinFixedEF):
     def __init__(self, fid='6f3c', sfid=None, name='EF.SMS', desc='Short messages', **kwargs):
-        super().__init__(fid, sfid=sfid, name=name, desc=desc, rec_len={176, 176}, **kwargs)
+        super().__init__(fid, sfid=sfid, name=name, desc=desc, rec_len=(176, 176), **kwargs)
 
     def _decode_record_bin(self, raw_bin_data):
         def decode_status(status):
@@ -679,7 +680,7 @@ class EF_SMS(LinFixedEF):
 # TS 51.011 Section 10.5.5
 class EF_MSISDN(LinFixedEF):
     def __init__(self, fid='6f40', sfid=None, name='EF.MSISDN', desc='MSISDN', **kwargs):
-        super().__init__(fid, sfid=sfid, name=name, desc=desc, rec_len={15, 34}, **kwargs)
+        super().__init__(fid, sfid=sfid, name=name, desc=desc, rec_len=(15, 34), **kwargs)
 
     def _decode_record_hex(self, raw_hex_data):
         return {'msisdn': dec_msisdn(raw_hex_data)}
@@ -721,7 +722,7 @@ class EF_SMSP(LinFixedEF):
                 raise ValueError
 
     def __init__(self, fid='6f42', sfid=None, name='EF.SMSP', desc='Short message service parameters', **kwargs):
-        super().__init__(fid, sfid=sfid, name=name, desc=desc, rec_len={28, None}, **kwargs)
+        super().__init__(fid, sfid=sfid, name=name, desc=desc, rec_len=(28, None), **kwargs)
         ScAddr = Struct('length'/Int8ub, 'ton_npi'/TonNpi, 'call_number'/BcdAdapter(Rpad(Bytes(10))))
         self._construct = Struct('alpha_id'/COptional(GsmStringAdapter(Rpad(Bytes(this._.total_len-28)))),
                                  'parameter_indicators'/InvertAdapter(FlagsEnum(Byte, tp_dest_addr=1, tp_sc_addr=2,
@@ -742,28 +743,28 @@ class EF_SMSS(TransparentEF):
         def _encode(self, obj, context, path):
             return 0 if obj else 1
 
-    def __init__(self, fid='6f43', sfid=None, name='EF.SMSS', desc='SMS status', size={2, 8}, **kwargs):
+    def __init__(self, fid='6f43', sfid=None, name='EF.SMSS', desc='SMS status', size=(2, 8), **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, **kwargs)
         self._construct = Struct(
             'last_used_tpmr'/Int8ub, 'memory_capacity_exceeded'/self.MemCapAdapter(Int8ub))
 
 # TS 51.011 Section 10.5.8
 class EF_SMSR(LinFixedEF):
-    def __init__(self, fid='6f47', sfid=None, name='EF.SMSR', desc='SMS status reports', rec_len={30, 30}, **kwargs):
+    def __init__(self, fid='6f47', sfid=None, name='EF.SMSR', desc='SMS status reports', rec_len=(30, 30), **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, rec_len=rec_len, **kwargs)
         self._construct = Struct(
             'sms_record_id'/Int8ub, 'sms_status_report'/HexAdapter(Bytes(29)))
 
 
 class EF_EXT(LinFixedEF):
-    def __init__(self, fid, sfid=None, name='EF.EXT', desc='Extension', rec_len={13, 13}, **kwargs):
+    def __init__(self, fid, sfid=None, name='EF.EXT', desc='Extension', rec_len=(13, 13), **kwargs):
         super().__init__(fid=fid, sfid=sfid, name=name, desc=desc, rec_len=rec_len, **kwargs)
         self._construct = Struct(
             'record_type'/Int8ub, 'extension_data'/HexAdapter(Bytes(11)), 'identifier'/Int8ub)
 
 # TS 51.011 Section 10.5.16
 class EF_CMI(LinFixedEF):
-    def __init__(self, fid='6f58', sfid=None, name='EF.CMI', rec_len={2, 21},
+    def __init__(self, fid='6f58', sfid=None, name='EF.CMI', rec_len=(2, 21),
                  desc='Comparison Method Information', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, rec_len=rec_len, **kwargs)
         self._construct = Struct(
@@ -778,9 +779,9 @@ class DF_TELECOM(CardDF):
             EF_ADN(fid='6f3b', name='EF.FDN', desc='Fixed dialling numbers'),
             EF_SMS(),
             LinFixedEF(fid='6f3d', name='EF.CCP',
-                       desc='Capability Configuration Parameters', rec_len={14, 14}),
+                       desc='Capability Configuration Parameters', rec_len=(14, 14)),
             LinFixedEF(fid='6f4f', name='EF.ECCP',
-                       desc='Extended Capability Configuration Parameters', rec_len={15, 32}),
+                       desc='Extended Capability Configuration Parameters', rec_len=(15, 32)),
             EF_MSISDN(),
             EF_SMSP(),
             EF_SMSS(),
@@ -792,6 +793,11 @@ class DF_TELECOM(CardDF):
             EF_EXT('6f4e', None, 'EF.EXT4', 'Extension4 (BDN/SSC)'),
             EF_SMSR(),
             EF_CMI(),
+            # not really part of 51.011 but something that TS 31.102 specifies may exist here.
+            DF_PHONEBOOK(),
+            DF_MULTIMEDIA(),
+            DF_MCS(),
+            DF_V2X(),
         ]
         self.add_files(files)
 
@@ -801,7 +807,7 @@ class DF_TELECOM(CardDF):
 
 # TS 51.011 Section 10.3.1
 class EF_LP(TransRecEF):
-    def __init__(self, fid='6f05', sfid=None, name='EF.LP', size={1, None}, rec_len=1,
+    def __init__(self, fid='6f05', sfid=None, name='EF.LP', size=(1, None), rec_len=1,
                  desc='Language Preference'):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, rec_len=rec_len)
 
@@ -813,7 +819,7 @@ class EF_LP(TransRecEF):
 
 # TS 51.011 Section 10.3.2
 class EF_IMSI(TransparentEF):
-    def __init__(self, fid='6f07', sfid=None, name='EF.IMSI', desc='IMSI', size={9, 9}):
+    def __init__(self, fid='6f07', sfid=None, name='EF.IMSI', desc='IMSI', size=(9, 9)):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size)
         # add those commands to the general commands of a TransparentEF
         self.shell_commands += [self.AddlShellCommands(self)]
@@ -834,15 +840,15 @@ class EF_IMSI(TransparentEF):
             """Change the plmn part of the IMSI"""
             plmn = arg.strip()
             if len(plmn) == 5 or len(plmn) == 6:
-                (data, sw) = self._cmd.rs.read_binary_dec()
+                (data, sw) = self._cmd.lchan.read_binary_dec()
                 if sw == '9000' and len(data['imsi'])-len(plmn) == 10:
                     imsi = data['imsi']
                     msin = imsi[len(plmn):]
-                    (data, sw) = self._cmd.rs.update_binary_dec(
+                    (data, sw) = self._cmd.lchan.update_binary_dec(
                         {'imsi': plmn+msin})
                     if sw == '9000' and data:
                         self._cmd.poutput_json(
-                            self._cmd.rs.selected_file.decode_hex(data))
+                            self._cmd.lchan.selected_file.decode_hex(data))
                 else:
                     raise ValueError("PLMN length does not match IMSI length")
             else:
@@ -852,7 +858,7 @@ class EF_IMSI(TransparentEF):
 # TS 51.011 Section 10.3.4
 class EF_PLMNsel(TransRecEF):
     def __init__(self, fid='6f30', sfid=None, name='EF.PLMNsel', desc='PLMN selector',
-                 size={24, None}, rec_len=3, **kwargs):
+                 size=(24, None), rec_len=3, **kwargs):
         super().__init__(fid, name=name, sfid=sfid, desc=desc, size=size, rec_len=rec_len, **kwargs)
 
     def _decode_record_hex(self, in_hex):
@@ -869,7 +875,7 @@ class EF_PLMNsel(TransRecEF):
 
 # TS 51.011 Section 10.3.6
 class EF_ACMmax(TransparentEF):
-    def __init__(self, fid='6f37', sfid=None, name='EF.ACMmax', size={3, 3},
+    def __init__(self, fid='6f37', sfid=None, name='EF.ACMmax', size=(3, 3),
                  desc='ACM maximum value', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, **kwargs)
         self._construct = Struct('acm_max'/Int24ub)
@@ -927,7 +933,7 @@ class EF_ServiceTable(TransparentEF):
 # TS 51.011 Section 10.3.11
 class EF_SPN(TransparentEF):
     def __init__(self, fid='6f46', sfid=None, name='EF.SPN',
-                 desc='Service Provider Name', size={17, 17}, **kwargs):
+                 desc='Service Provider Name', size=(17, 17), **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, **kwargs)
         self._construct = BitStruct(
             # Byte 1
@@ -940,7 +946,7 @@ class EF_SPN(TransparentEF):
 
 # TS 51.011 Section 10.3.13
 class EF_CBMI(TransRecEF):
-    def __init__(self, fid='6f45', sfid=None, name='EF.CBMI', size={2, None}, rec_len=2,
+    def __init__(self, fid='6f45', sfid=None, name='EF.CBMI', size=(2, None), rec_len=2,
                  desc='Cell Broadcast message identifier selection', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, rec_len=rec_len, **kwargs)
         self._construct = GreedyRange(Int16ub)
@@ -948,15 +954,15 @@ class EF_CBMI(TransRecEF):
 # TS 51.011 Section 10.3.15
 class EF_ACC(TransparentEF):
     def __init__(self, fid='6f78', sfid=None, name='EF.ACC',
-                 desc='Access Control Class', size={2, 2}, **kwargs):
+                 desc='Access Control Class', size=(2, 2), **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, **kwargs)
         self._construct = HexAdapter(Bytes(2))
 
 # TS 51.011 Section 10.3.16
 class EF_LOCI(TransparentEF):
-    def __init__(self, fid='6f7e', sfid=None, name='EF.LOCI', desc='Location Information', size={11, 11}):
+    def __init__(self, fid='6f7e', sfid=None, name='EF.LOCI', desc='Location Information', size=(11, 11)):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size)
-        self._construct = Struct('tmsi'/Bytes(4), 'lai'/Bytes(5), 'tmsi_time'/Int8ub,
+        self._construct = Struct('tmsi'/HexAdapter(Bytes(4)), 'lai'/HexAdapter(Bytes(5)), 'tmsi_time'/Int8ub,
                                  'lu_status'/Enum(Byte, updated=0, not_updated=1, plmn_not_allowed=2,
                                                   location_area_not_allowed=3))
 
@@ -972,7 +978,7 @@ class EF_AD(TransparentEF):
     #OP_MODE_DICT = {int(v) : str(v) for v in EF_AD.OP_MODE}
     #OP_MODE_DICT_REVERSED = {str(v) : int(v) for v in EF_AD.OP_MODE}
 
-    def __init__(self, fid='6fad', sfid=None, name='EF.AD', desc='Administrative Data', size={3, 4}):
+    def __init__(self, fid='6fad', sfid=None, name='EF.AD', desc='Administrative Data', size=(3, 4)):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size)
         self._construct = BitStruct(
             # Byte 1
@@ -993,14 +999,14 @@ class EF_AD(TransparentEF):
 
 # TS 51.011 Section 10.3.20 / 10.3.22
 class EF_VGCS(TransRecEF):
-    def __init__(self, fid='6fb1', sfid=None, name='EF.VGCS', size={4, 200}, rec_len=4,
+    def __init__(self, fid='6fb1', sfid=None, name='EF.VGCS', size=(4, 200), rec_len=4,
                  desc='Voice Group Call Service', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, rec_len=rec_len, **kwargs)
         self._construct = BcdAdapter(Bytes(4))
 
 # TS 51.011 Section 10.3.21 / 10.3.23
 class EF_VGCSS(TransparentEF):
-    def __init__(self, fid='6fb2', sfid=None, name='EF.VGCSS', size={7, 7},
+    def __init__(self, fid='6fb2', sfid=None, name='EF.VGCSS', size=(7, 7),
                  desc='Voice Group Call Service Status', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, **kwargs)
         self._construct = BitStruct(
@@ -1008,7 +1014,7 @@ class EF_VGCSS(TransparentEF):
 
 # TS 51.011 Section 10.3.24
 class EF_eMLPP(TransparentEF):
-    def __init__(self, fid='6fb5', sfid=None, name='EF.eMLPP', size={2, 2},
+    def __init__(self, fid='6fb5', sfid=None, name='EF.eMLPP', size=(2, 2),
                  desc='enhanced Multi Level Pre-emption and Priority', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, **kwargs)
         FlagsConstruct = FlagsEnum(
@@ -1018,7 +1024,7 @@ class EF_eMLPP(TransparentEF):
 
 # TS 51.011 Section 10.3.25
 class EF_AAeM(TransparentEF):
-    def __init__(self, fid='6fb6', sfid=None, name='EF.AAeM', size={1, 1},
+    def __init__(self, fid='6fb6', sfid=None, name='EF.AAeM', size=(1, 1),
                  desc='Automatic Answer for eMLPP Service', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, **kwargs)
         FlagsConstruct = FlagsEnum(
@@ -1027,28 +1033,28 @@ class EF_AAeM(TransparentEF):
 
 # TS 51.011 Section 10.3.26
 class EF_CBMID(EF_CBMI):
-    def __init__(self, fid='6f48', sfid=None, name='EF.CBMID', size={2, None}, rec_len=2,
+    def __init__(self, fid='6f48', sfid=None, name='EF.CBMID', size=(2, None), rec_len=2,
                  desc='Cell Broadcast Message Identifier for Data Download', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, rec_len=rec_len, **kwargs)
         self._construct = GreedyRange(Int16ub)
 
 # TS 51.011 Section 10.3.27
 class EF_ECC(TransRecEF):
-    def __init__(self, fid='6fb7', sfid=None, name='EF.ECC', size={3, 15}, rec_len=3,
+    def __init__(self, fid='6fb7', sfid=None, name='EF.ECC', size=(3, 15), rec_len=3,
                  desc='Emergency Call Codes', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, rec_len=rec_len, **kwargs)
         self._construct = GreedyRange(BcdAdapter(Bytes(3)))
 
 # TS 51.011 Section 10.3.28
 class EF_CBMIR(TransRecEF):
-    def __init__(self, fid='6f50', sfid=None, name='EF.CBMIR', size={4, None}, rec_len=4,
+    def __init__(self, fid='6f50', sfid=None, name='EF.CBMIR', size=(4, None), rec_len=4,
                  desc='Cell Broadcast message identifier range selection', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, rec_len=rec_len, **kwargs)
         self._construct = GreedyRange(Struct('lower'/Int16ub, 'upper'/Int16ub))
 
 # TS 51.011 Section 10.3.29
 class EF_DCK(TransparentEF):
-    def __init__(self, fid='6f2c', sfid=None, name='EF.DCK', size={16, 16},
+    def __init__(self, fid='6f2c', sfid=None, name='EF.DCK', size=(16, 16),
                  desc='Depersonalisation Control Keys', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, **kwargs)
         self._construct = Struct('network'/BcdAdapter(Bytes(4)),
@@ -1057,7 +1063,7 @@ class EF_DCK(TransparentEF):
                                  'corporate'/BcdAdapter(Bytes(4)))
 # TS 51.011 Section 10.3.30
 class EF_CNL(TransRecEF):
-    def __init__(self, fid='6f32', sfid=None, name='EF.CNL', size={6, None}, rec_len=6,
+    def __init__(self, fid='6f32', sfid=None, name='EF.CNL', size=(6, None), rec_len=6,
                  desc='Co-operative Network List', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, rec_len=rec_len, **kwargs)
 
@@ -1079,7 +1085,7 @@ class EF_CNL(TransRecEF):
 
 # TS 51.011 Section 10.3.31
 class EF_NIA(LinFixedEF):
-    def __init__(self, fid='6f51', sfid=None, name='EF.NIA', rec_len={1, 32},
+    def __init__(self, fid='6f51', sfid=None, name='EF.NIA', rec_len=(1, 32),
                  desc='Network\'s Indication of Alerting', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, rec_len=rec_len, **kwargs)
         self._construct = Struct(
@@ -1087,21 +1093,21 @@ class EF_NIA(LinFixedEF):
 
 # TS 51.011 Section 10.3.32
 class EF_Kc(TransparentEF):
-    def __init__(self, fid='6f20', sfid=None, name='EF.Kc', desc='Ciphering key Kc', size={9, 9}):
-        super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size)
+    def __init__(self, fid='6f20', sfid=None, name='EF.Kc', desc='Ciphering key Kc', size=(9, 9), **kwargs):
+        super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, **kwargs)
         self._construct = Struct('kc'/HexAdapter(Bytes(8)), 'cksn'/Int8ub)
 
 # TS 51.011 Section 10.3.33
 class EF_LOCIGPRS(TransparentEF):
-    def __init__(self, fid='6f53', sfid=None, name='EF.LOCIGPRS', desc='GPRS Location Information', size={14, 14}):
+    def __init__(self, fid='6f53', sfid=None, name='EF.LOCIGPRS', desc='GPRS Location Information', size=(14, 14)):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size)
-        self._construct = Struct('ptmsi'/Bytes(4), 'ptmsi_sig'/Int8ub, 'rai'/Bytes(6),
+        self._construct = Struct('ptmsi'/HexAdapter(Bytes(4)), 'ptmsi_sig'/Int8ub, 'rai'/HexAdapter(Bytes(6)),
                                  'rau_status'/Enum(Byte, updated=0, not_updated=1, plmn_not_allowed=2,
                                                    routing_area_not_allowed=3))
 
 # TS 51.011 Section 10.3.35..37
 class EF_xPLMNwAcT(TransRecEF):
-    def __init__(self, fid, sfid=None, name=None, desc=None, size={40, None}, rec_len=5, **kwargs):
+    def __init__(self, fid, sfid=None, name=None, desc=None, size=(40, None), rec_len=5, **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, rec_len=rec_len, **kwargs)
 
     def _decode_record_hex(self, in_hex):
@@ -1150,16 +1156,16 @@ class EF_xPLMNwAcT(TransRecEF):
 
 # TS 51.011 Section 10.3.38
 class EF_CPBCCH(TransRecEF):
-    def __init__(self, fid='6f63', sfid=None, name='EF.CPBCCH', size={2, 14}, rec_len=2,
-                 desc='CPBCCH Information'):
-        super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, rec_len=rec_len)
+    def __init__(self, fid='6f63', sfid=None, name='EF.CPBCCH', size=(2, 14), rec_len=2,
+                 desc='CPBCCH Information', **kwargs):
+        super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, rec_len=rec_len, **kwargs)
         self._construct = Struct('cpbcch'/Int16ub)
 
 # TS 51.011 Section 10.3.39
 class EF_InvScan(TransparentEF):
-    def __init__(self, fid='6f64', sfid=None, name='EF.InvScan', size={1, 1},
-                 desc='IOnvestigation Scan'):
-        super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size)
+    def __init__(self, fid='6f64', sfid=None, name='EF.InvScan', size=(1, 1),
+                 desc='IOnvestigation Scan', **kwargs):
+        super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, **kwargs)
         self._construct = FlagsEnum(
             Byte, in_limited_service_mode=1, after_successful_plmn_selection=2)
 
@@ -1167,11 +1173,13 @@ class EF_InvScan(TransparentEF):
 class EF_PNN(LinFixedEF):
     class FullNameForNetwork(BER_TLV_IE, tag=0x43):
         # TS 24.008 10.5.3.5a
-        pass
+        # TODO: proper decode
+        _construct = HexAdapter(GreedyBytes)
 
     class ShortNameForNetwork(BER_TLV_IE, tag=0x45):
         # TS 24.008 10.5.3.5a
-        pass
+        # TODO: proper decode
+        _construct = HexAdapter(GreedyBytes)
 
     class NetworkNameCollection(TLV_IE_Collection, nested=[FullNameForNetwork, ShortNameForNetwork]):
         pass
@@ -1182,20 +1190,21 @@ class EF_PNN(LinFixedEF):
 
 # TS 51.011 Section 10.3.42
 class EF_OPL(LinFixedEF):
-    def __init__(self, fid='6fc6', sfid=None, name='EF.OPL', rec_len={8, 8}, desc='Operator PLMN List', **kwargs):
+    def __init__(self, fid='6fc6', sfid=None, name='EF.OPL', rec_len=(8, 8), desc='Operator PLMN List', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, rec_len=rec_len, **kwargs)
-        self._construct = Struct('lai'/Struct('mcc_mnc'/BcdAdapter(Bytes(3)), 'lac_min'/Bytes(2), 'lac_max'/Bytes(2)), 'pnn_record_id'/Int8ub)
+        self._construct = Struct('lai'/Struct('mcc_mnc'/BcdAdapter(Bytes(3)),
+                                 'lac_min'/HexAdapter(Bytes(2)), 'lac_max'/HexAdapter(Bytes(2))), 'pnn_record_id'/Int8ub)
 
 # TS 51.011 Section 10.3.44 + TS 31.102 4.2.62
 class EF_MBI(LinFixedEF):
-    def __init__(self, fid='6fc9', sfid=None, name='EF.MBI', rec_len={4, 5}, desc='Mailbox Identifier', **kwargs):
+    def __init__(self, fid='6fc9', sfid=None, name='EF.MBI', rec_len=(4, 5), desc='Mailbox Identifier', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, rec_len=rec_len, **kwargs)
         self._construct = Struct('mbi_voicemail'/Int8ub, 'mbi_fax'/Int8ub, 'mbi_email'/Int8ub,
                                  'mbi_other'/Int8ub, 'mbi_videocall'/COptional(Int8ub))
 
 # TS 51.011 Section 10.3.45 + TS 31.102 4.2.63
 class EF_MWIS(LinFixedEF):
-    def __init__(self, fid='6fca', sfid=None, name='EF.MWIS', rec_len={5, 6},
+    def __init__(self, fid='6fca', sfid=None, name='EF.MWIS', rec_len=(5, 6),
                  desc='Message Waiting Indication Status', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, rec_len=rec_len, **kwargs)
         self._construct = Struct('mwi_status'/FlagsEnum(Byte, voicemail=1, fax=2, email=4, other=8, videomail=16),
@@ -1218,10 +1227,10 @@ class EF_SPDI(TransparentEF):
 
 # TS 51.011 Section 10.3.51
 class EF_MMSN(LinFixedEF):
-    def __init__(self, fid='6fce', sfid=None, name='EF.MMSN', rec_len={4, 20}, desc='MMS Notification', **kwargs):
+    def __init__(self, fid='6fce', sfid=None, name='EF.MMSN', rec_len=(4, 20), desc='MMS Notification', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, rec_len=rec_len, **kwargs)
-        self._construct = Struct('mms_status'/Bytes(2), 'mms_implementation'/Bytes(1),
-                                 'mms_notification'/Bytes(this._.total_len-4), 'ext_record_nr'/Byte)
+        self._construct = Struct('mms_status'/HexAdapter(Bytes(2)), 'mms_implementation'/HexAdapter(Bytes(1)),
+                                 'mms_notification'/HexAdapter(Bytes(this._.total_len-4)), 'ext_record_nr'/Byte)
 
 # TS 51.011 Annex K.1
 class MMS_Implementation(BER_TLV_IE, tag=0x80):
@@ -1244,7 +1253,7 @@ class EF_MMSICP(TransparentEF):
     class MMS_ConnectivityParamters(TLV_IE_Collection,
                                     nested=[MMS_Implementation, MMS_Relay_Server, Interface_to_CN, Gateway]):
         pass
-    def __init__(self, fid='6fd0', sfid=None, name='EF.MMSICP', size={1, None},
+    def __init__(self, fid='6fd0', sfid=None, name='EF.MMSICP', size=(1, None),
                  desc='MMS Issuer Connectivity Parameters', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, **kwargs)
         self._tlv = EF_MMSICP.MMS_ConnectivityParamters
@@ -1260,14 +1269,14 @@ class EF_MMSUP(LinFixedEF):
     class MMS_User_Preferences(TLV_IE_Collection,
                                nested=[MMS_Implementation, MMS_UserPref_ProfileName, MMS_UserPref_Info]):
         pass
-    def __init__(self, fid='6fd1', sfid=None, name='EF.MMSUP', rec_len={1, None},
+    def __init__(self, fid='6fd1', sfid=None, name='EF.MMSUP', rec_len=(1, None),
                  desc='MMS User Preferences', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, rec_len=rec_len, **kwargs)
         self._tlv = EF_MMSUP.MMS_User_Preferences
 
 # TS 51.011 Section 10.3.55
 class EF_MMSUCP(TransparentEF):
-    def __init__(self, fid='6fd2', sfid=None, name='EF.MMSUCP', size={1, None},
+    def __init__(self, fid='6fd2', sfid=None, name='EF.MMSUCP', size=(1, None),
                  desc='MMS User Connectivity Parameters', **kwargs):
         super().__init__(fid, sfid=sfid, name=name, desc=desc, size=size, **kwargs)
 
@@ -1284,24 +1293,24 @@ class DF_GSM(CardDF):
                           'Higher Priority PLMN search period'),
             EF_ACMmax(),
             EF_ServiceTable('6f38', None, 'EF.SST',
-                            'SIM service table', table=EF_SST_map, size={2, 16}),
+                            'SIM service table', table=EF_SST_map, size=(2, 16)),
             CyclicEF('6f39', None, 'EF.ACM',
-                     'Accumulated call meter', rec_len={3, 3}),
+                     'Accumulated call meter', rec_len=(3, 3)),
             TransparentEF('6f3e', None, 'EF.GID1', 'Group Identifier Level 1'),
             TransparentEF('6f3f', None, 'EF.GID2', 'Group Identifier Level 2'),
             EF_SPN(),
             TransparentEF('6f41', None, 'EF.PUCT',
-                          'Price per unit and currency table', size={5, 5}),
+                          'Price per unit and currency table', size=(5, 5)),
             EF_CBMI(),
             TransparentEF('6f7f', None, 'EF.BCCH',
-                          'Broadcast control channels', size={16, 16}),
+                          'Broadcast control channels', size=(16, 16)),
             EF_ACC(),
             EF_PLMNsel('6f7b', None, 'EF.FPLMN',
-                       'Forbidden PLMNs', size={12, 12}),
+                       'Forbidden PLMNs', size=(12, 12)),
             EF_LOCI(),
             EF_AD(),
             TransparentEF('6fa3', None, 'EF.Phase',
-                          'Phase identification', size={1, 1}),
+                          'Phase identification', size=(1, 1)),
             EF_VGCS(),
             EF_VGCSS(),
             EF_VGCS('6fb3', None, 'EF.VBS', 'Voice Broadcast Service'),

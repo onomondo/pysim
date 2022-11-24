@@ -20,7 +20,6 @@
 from typing import List
 
 import cmd2
-from cmd2 import style, fg, bg
 from cmd2 import CommandSet, with_default_category, with_argparser
 import argparse
 
@@ -52,12 +51,12 @@ class Ts102222Commands(CommandSet):
         if not opts.force_delete:
             self._cmd.perror("Refusing to permanently delete the file, please read the help text.")
             return
-        f = self._cmd.rs.get_file_for_selectable(opts.NAME)
+        f = self._cmd.lchan.get_file_for_selectable(opts.NAME)
         (data, sw) = self._cmd.card._scc.delete_file(f.fid)
 
     def complete_delete_file(self, text, line, begidx, endidx) -> List[str]:
         """Command Line tab completion for DELETE FILE"""
-        index_dict = {1: self._cmd.rs.selected_file.get_selectable_names()}
+        index_dict = {1: self._cmd.lchan.selected_file.get_selectable_names()}
         return self._cmd.index_based_complete(text, line, begidx, endidx, index_dict=index_dict)
 
     termdf_parser = argparse.ArgumentParser()
@@ -73,12 +72,12 @@ class Ts102222Commands(CommandSet):
         if not opts.force:
             self._cmd.perror("Refusing to terminate the file, please read the help text.")
             return
-        f = self._cmd.rs.get_file_for_selectable(opts.NAME)
+        f = self._cmd.lchan.get_file_for_selectable(opts.NAME)
         (data, sw) = self._cmd.card._scc.terminate_df(f.fid)
 
     def complete_terminate_df(self, text, line, begidx, endidx) -> List[str]:
         """Command Line tab completion for TERMINATE DF"""
-        index_dict = {1: self._cmd.rs.selected_file.get_selectable_names()}
+        index_dict = {1: self._cmd.lchan.selected_file.get_selectable_names()}
         return self._cmd.index_based_complete(text, line, begidx, endidx, index_dict=index_dict)
 
     @cmd2.with_argparser(termdf_parser)
@@ -89,12 +88,12 @@ class Ts102222Commands(CommandSet):
         if not opts.force:
             self._cmd.perror("Refusing to terminate the file, please read the help text.")
             return
-        f = self._cmd.rs.get_file_for_selectable(opts.NAME)
+        f = self._cmd.lchan.get_file_for_selectable(opts.NAME)
         (data, sw) = self._cmd.card._scc.terminate_ef(f.fid)
 
     def complete_terminate_ef(self, text, line, begidx, endidx) -> List[str]:
         """Command Line tab completion for TERMINATE EF"""
-        index_dict = {1: self._cmd.rs.selected_file.get_selectable_names()}
+        index_dict = {1: self._cmd.lchan.selected_file.get_selectable_names()}
         return self._cmd.index_based_complete(text, line, begidx, endidx, index_dict=index_dict)
 
     tcard_parser = argparse.ArgumentParser()
@@ -139,6 +138,9 @@ class Ts102222Commands(CommandSet):
                 self._cmd.perror("you must specify the --record-length for linear fixed EF")
                 return
             file_descriptor['record_len'] = opts.record_length
+            file_descriptor['num_of_rec'] = opts.file_size // opts.record_length
+            if file_descriptor['num_of_rec'] * file_descriptor['record_len'] != opts.file_size:
+                raise ValueError("File size not evenly divisible by record length")
         elif opts.structure == 'ber_tlv':
             self._cmd.perror("BER-TLV creation not yet fully supported, sorry")
             return
@@ -152,7 +154,7 @@ class Ts102222Commands(CommandSet):
         fcp = FcpTemplate(children=ies)
         (data, sw) = self._cmd.card._scc.create_file(b2h(fcp.to_tlv()))
         # the newly-created file is automatically selected but our runtime state knows nothing of it
-        self._cmd.rs.select_file(self._cmd.rs.selected_file)
+        self._cmd.lchan.select_file(self._cmd.lchan.selected_file)
 
     createdf_parser = argparse.ArgumentParser()
     createdf_parser.add_argument('FILE_ID', type=str, help='File Identifier as 4-character hex string')
@@ -203,4 +205,4 @@ class Ts102222Commands(CommandSet):
         fcp = FcpTemplate(children=ies)
         (data, sw) = self._cmd.card._scc.create_file(b2h(fcp.to_tlv()))
         # the newly-created file is automatically selected but our runtime state knows nothing of it
-        self._cmd.rs.select_file(self._cmd.rs.selected_file)
+        self._cmd.lchan.select_file(self._cmd.lchan.selected_file)

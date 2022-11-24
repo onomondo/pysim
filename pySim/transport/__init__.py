@@ -9,11 +9,12 @@ from typing import Optional, Tuple
 
 from pySim.exceptions import *
 from pySim.construct import filter_dict
-from pySim.utils import sw_match, b2h, h2b, i2h
+from pySim.utils import sw_match, b2h, h2b, i2h, Hexstr
+from pySim.cat import ProactiveCommand, CommandDetails, DeviceIdentities, Result
 
 #
 # Copyright (C) 2009-2010  Sylvain Munaut <tnt@246tNt.com>
-# Copyright (C) 2021 Harald Welte <laforge@osmocom.org>
+# Copyright (C) 2021-2022 Harald Welte <laforge@osmocom.org>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,13 +38,33 @@ class ApduTracer:
     def trace_response(self, cmd, sw, resp):
         pass
 
+class ProactiveHandler(abc.ABC):
+    """Abstract base class representing the interface of some code that handles
+    the proactive commands, as returned by the card in responses to the FETCH
+    command."""
+    def receive_fetch_raw(self, pcmd: ProactiveCommand, parsed: Hexstr):
+        # try to find a generic handler like handle_SendShortMessage
+        handle_name = 'handle_%s' % type(parsed).__name__
+        if hasattr(self, handle_name):
+            handler = getattr(self, handle_name)
+            return handler(pcmd.decoded)
+        # fall back to common handler
+        return self.receive_fetch(pcmd)
+
+    def receive_fetch(self, pcmd: ProactiveCommand):
+        """Default handler for not otherwise handled proactive commands."""
+        raise NotImplementedError('No handler method for %s' % pcmd.decoded)
+
+
 
 class LinkBase(abc.ABC):
     """Base class for link/transport to card."""
 
-    def __init__(self, sw_interpreter=None, apdu_tracer=None):
+    def __init__(self, sw_interpreter=None, apdu_tracer=None,
+                 proactive_handler: Optional[ProactiveHandler]=None):
         self.sw_interpreter = sw_interpreter
         self.apdu_tracer = apdu_tracer
+        self.proactive_handler = proactive_handler
 
     @abc.abstractmethod
     def _send_apdu_raw(self, pdu: str) -> Tuple[str, str]:
@@ -136,11 +157,57 @@ class LinkBase(abc.ABC):
                         sw   : string (in hex) of status word (ex. "9000")
         """
         rv = self.send_apdu(pdu)
+        last_sw = rv[1]
 
-        if sw == '9000' and sw_match(rv[1], '91xx'):
+        while sw == '9000' and sw_match(last_sw, '91xx'):
+            # It *was* successful after all -- the extra pieces FETCH handled
+            # need not concern the caller.
+            rv = (rv[0], '9000')
             # proactive sim as per TS 102 221 Setion 7.4.2
-            rv = self.send_apdu_checksw('80120000' + rv[1][2:], sw)
-            print("FETCH: %s", rv[0])
+            # TODO: Check SW manually to avoid recursing on the stack (provided this piece of code stays in this place)
+            fetch_rv = self.send_apdu_checksw('80120000' + last_sw[2:], sw)
+            # Setting this in case we later decide not to send a terminal
+            # response immediately unconditionally -- the card may still have
+            # something pending even though the last command was not processed
+            # yet.
+            last_sw = fetch_rv[1]
+            # parse the proactive command
+            pcmd = ProactiveCommand()
+            parsed = pcmd.from_tlv(h2b(fetch_rv[0]))
+            print("FETCH: %s (%s)" % (fetch_rv[0], type(parsed).__name__))
+            result = Result()
+            if self.proactive_handler:
+                # Extension point: If this does return a list of TLV objects,
+                # they could be appended after the Result; if the first is a
+                # Result, that cuold replace the one built here.
+                self.proactive_handler.receive_fetch_raw(pcmd, parsed)
+                result.from_dict({'general_result': 'performed_successfully', 'additional_information': ''})
+            else:
+                result.from_dict({'general_result': 'command_beyond_terminal_capability', 'additional_information': ''})
+
+            # Send response immediately, thus also flushing out any further
+            # proactive commands that the card already wants to send
+            #
+            # Structure as per TS 102 223 V4.4.0 Section 6.8
+
+            # The Command Details are echoed from the command that has been processed.
+            (command_details,) = [c for c in pcmd.decoded.children if isinstance(c, CommandDetails)]
+            # The Device Identities are fixed. (TS 102 223 V4.0.0 Section 6.8.2)
+            device_identities = DeviceIdentities()
+            device_identities.from_dict({'source_dev_id': 'terminal', 'dest_dev_id': 'uicc'})
+
+            # Testing hint: The value of tail does not influence the behavior
+            # of an SJA2 that sent ans SMS, so this is implemented only
+            # following TS 102 223, and not fully tested.
+            tail = command_details.to_tlv() + device_identities.to_tlv() + result.to_tlv()
+            # Testing hint: In contrast to the above, this part is positively
+            # essential to get the SJA2 to provide the later parts of a
+            # multipart SMS in response to an OTA RFM command.
+            terminal_response = '80140000' + b2h(len(tail).to_bytes(1, 'big') + tail)
+
+            terminal_response_rv = self.send_apdu(terminal_response)
+            last_sw = terminal_response_rv[1]
+
         if not sw_match(rv[1], sw):
             raise SwMatchError(rv[1], sw.lower(), self.sw_interpreter)
         return rv

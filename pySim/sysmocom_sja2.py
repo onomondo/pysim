@@ -85,7 +85,7 @@ class EF_MILENAGE_CFG(TransparentEF):
 
 class EF_0348_KEY(LinFixedEF):
     def __init__(self, fid='6f22', name='EF.0348_KEY', desc='TS 03.48 OTA Keys'):
-        super().__init__(fid, name=name, desc=desc, rec_len={27, 35})
+        super().__init__(fid, name=name, desc=desc, rec_len=(27, 35))
 
     def _decode_record_bin(self, raw_bin_data):
         u = unpack('!BBB', raw_bin_data[0:3])
@@ -103,7 +103,7 @@ class EF_0348_KEY(LinFixedEF):
 
 class EF_0348_COUNT(LinFixedEF):
     def __init__(self, fid='6f23', name='EF.0348_COUNT', desc='TS 03.48 OTA Counters'):
-        super().__init__(fid, name=name, desc=desc, rec_len={7, 7})
+        super().__init__(fid, name=name, desc=desc, rec_len=(7, 7))
 
     def _decode_record_bin(self, raw_bin_data):
         u = unpack('!BB5s', raw_bin_data)
@@ -118,7 +118,7 @@ class EF_SIM_AUTH_COUNTER(TransparentEF):
 
 class EF_GP_COUNT(LinFixedEF):
     def __init__(self, fid='6f26', name='EF.GP_COUNT', desc='GP SCP02 Counters'):
-        super().__init__(fid, name=name, desc=desc, rec_len={5, 5})
+        super().__init__(fid, name=name, desc=desc, rec_len=(5, 5))
 
     def _decode_record_bin(self, raw_bin_data):
         u = unpack('!BBHB', raw_bin_data)
@@ -127,7 +127,7 @@ class EF_GP_COUNT(LinFixedEF):
 
 class EF_GP_DIV_DATA(LinFixedEF):
     def __init__(self, fid='6f27', name='EF.GP_DIV_DATA', desc='GP SCP02 key diversification data'):
-        super().__init__(fid, name=name, desc=desc, rec_len={12, 12})
+        super().__init__(fid, name=name, desc=desc, rec_len=(12, 12))
 
     def _decode_record_bin(self, raw_bin_data):
         u = unpack('!BB8s', raw_bin_data)
@@ -137,19 +137,40 @@ class EF_GP_DIV_DATA(LinFixedEF):
 class EF_SIM_AUTH_KEY(TransparentEF):
     def __init__(self, fid='6f20', name='EF.SIM_AUTH_KEY'):
         super().__init__(fid, name=name, desc='USIM authentication key')
-        CfgByte = BitStruct(Bit[2],
+        CfgByte = BitStruct(Padding(2),
                             'use_sres_deriv_func_2'/Bit,
                             'use_opc_instead_of_op'/Bit,
                             'algorithm'/Enum(Nibble, milenage=4, comp128v1=1, comp128v2=2, comp128v3=3))
         self._construct = Struct('cfg'/CfgByte,
-                                 'key'/Bytes(16),
-                                 'op' /
-                                 If(this.cfg.algorithm == 'milenage' and not this.cfg.use_opc_instead_of_op, Bytes(
-                                     16)),
+                                 'key'/HexAdapter(Bytes(16)),
+                                 'op'/ If(this.cfg.algorithm == 'milenage' and not this.cfg.use_opc_instead_of_op,
+                                     HexAdapter(Bytes(16))),
                                  'opc' /
-                                 If(this.cfg.algorithm == 'milenage' and this.cfg.use_opc_instead_of_op, Bytes(
-                                     16))
+                                 If(this.cfg.algorithm == 'milenage' and this.cfg.use_opc_instead_of_op,
+                                     HexAdapter(Bytes(16)))
                                  )
+
+class EF_HTTPS_CFG(TransparentEF):
+    def __init__(self, fid='6f2a', name='EF.HTTPS_CFG'):
+        super().__init__(fid, name=name, desc='HTTPS configuration')
+
+class EF_HTTPS_KEYS(TransparentEF):
+    KeyRecord = Struct('security_domain'/Int8ub,
+                       'key_type'/Enum(Int8ub, des=0x80, psk=0x85, aes=0x88),
+                       'key_version'/Int8ub,
+                       'key_id'/Int8ub,
+                       'key_length'/Int8ub,
+                       'key'/HexAdapter(Bytes(this.key_length)))
+    def __init__(self, fid='6f2b', name='EF.HTTPS_KEYS'):
+        super().__init__(fid, name=name, desc='HTTPS PSK and DEK keys')
+        self._construct = GreedyRange(self.KeyRecord)
+
+class EF_HTTPS_POLL(TransparentEF):
+    TimeUnit = Enum(Int8ub, seconds=0, minutes=1, hours=2, days=3, ten_days=4)
+    def __init__(self, fid='6f2c', name='EF.HTTPS_POLL'):
+        super().__init__(fid, name=name, desc='HTTPS polling interval')
+        self._construct = Struct(Const(b'\x82'), 'time_unit'/self.TimeUnit, 'value'/Int8ub,
+                                 'adm_session_triggering_tlv'/HexAdapter(GreedyBytes))
 
 
 class DF_SYSTEM(CardDF):
@@ -169,6 +190,9 @@ class DF_SYSTEM(CardDF):
             EF_0348_COUNT(),
             EF_GP_COUNT(),
             EF_GP_DIV_DATA(),
+            EF_HTTPS_CFG(),
+            EF_HTTPS_KEYS(),
+            EF_HTTPS_POLL(),
         ]
         self.add_files(files)
 
@@ -193,36 +217,36 @@ class EF_USIM_SQN(TransparentEF):
 class EF_USIM_AUTH_KEY(TransparentEF):
     def __init__(self, fid='af20', name='EF.USIM_AUTH_KEY'):
         super().__init__(fid, name=name, desc='USIM authentication key')
-        CfgByte = BitStruct(Bit, 'only_4bytes_res_in_3g'/Bit,
+        CfgByte = BitStruct(Padding(1), 'only_4bytes_res_in_3g'/Bit,
                             'use_sres_deriv_func_2_in_3g'/Bit,
                             'use_opc_instead_of_op'/Bit,
                             'algorithm'/Enum(Nibble, milenage=4, sha1_aka=5, xor=15))
         self._construct = Struct('cfg'/CfgByte,
-                                 'key'/Bytes(16),
+                                 'key'/HexAdapter(Bytes(16)),
                                  'op' /
-                                 If(this.cfg.algorithm == 'milenage' and not this.cfg.use_opc_instead_of_op, Bytes(
-                                     16)),
+                                 If(this.cfg.algorithm == 'milenage' and not this.cfg.use_opc_instead_of_op,
+                                     HexAdapter(Bytes(16))),
                                  'opc' /
-                                 If(this.cfg.algorithm == 'milenage' and this.cfg.use_opc_instead_of_op, Bytes(
-                                     16))
+                                 If(this.cfg.algorithm == 'milenage' and this.cfg.use_opc_instead_of_op,
+                                     HexAdapter(Bytes(16)))
                                  )
 
 
 class EF_USIM_AUTH_KEY_2G(TransparentEF):
     def __init__(self, fid='af22', name='EF.USIM_AUTH_KEY_2G'):
         super().__init__(fid, name=name, desc='USIM authentication key in 2G context')
-        CfgByte = BitStruct(Bit, 'only_4bytes_res_in_3g'/Bit,
+        CfgByte = BitStruct(Padding(1), 'only_4bytes_res_in_3g'/Bit,
                             'use_sres_deriv_func_2_in_3g'/Bit,
                             'use_opc_instead_of_op'/Bit,
                             'algorithm'/Enum(Nibble, milenage=4, comp128v1=1, comp128v2=2, comp128v3=3))
         self._construct = Struct('cfg'/CfgByte,
-                                 'key'/Bytes(16),
+                                 'key'/HexAdapter(Bytes(16)),
                                  'op' /
-                                 If(this.cfg.algorithm == 'milenage' and not this.cfg.use_opc_instead_of_op, Bytes(
-                                     16)),
+                                 If(this.cfg.algorithm == 'milenage' and not this.cfg.use_opc_instead_of_op,
+                                     HexAdapter(Bytes(16))),
                                  'opc' /
-                                 If(this.cfg.algorithm == 'milenage' and this.cfg.use_opc_instead_of_op, Bytes(
-                                     16))
+                                 If(this.cfg.algorithm == 'milenage' and this.cfg.use_opc_instead_of_op,
+                                     HexAdapter(Bytes(16)))
                                  )
 
 
@@ -242,7 +266,7 @@ class EF_GBA_REC_LIST(TransparentEF):
 class EF_GBA_INT_KEY(LinFixedEF):
     def __init__(self, fid='af33', name='EF.GBA_INT_KEY'):
         super().__init__(fid, name=name,
-                         desc='Secret key for GBA key derivation', rec_len={32, 32})
+                         desc='Secret key for GBA key derivation', rec_len=(32, 32))
         self._construct = GreedyBytes
 
 

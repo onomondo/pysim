@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='pySim',
-    version='1.0',
+    version='1.1',
     packages=['pySim', 'pySim.transport'],
     url='https://osmocom.org/projects/pysim/wiki',
     license='GPLv2',
@@ -17,6 +17,10 @@ setup(
         "construct >= 2.9",
         "bidict",
         "gsm0338",
+        "termcolor",
+        "colorlog",
+        "pycryptodome",
+        "smpp.pdu @ git+https://github.com/hologram-io/smpp.pdu",
     ],
     scripts=[
         'pySim-prog.py',

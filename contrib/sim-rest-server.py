@@ -2,7 +2,7 @@
 
 # RESTful HTTP service for performing authentication against USIM cards
 #
-# (C) 2021 by Harald Welte <laforge@osmocom.org>
+# (C) 2021-2022 by Harald Welte <laforge@osmocom.org>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@ import json
 import sys
 import argparse
 
-from klein import run, route
+from klein import Klein
 
 from pySim.transport import ApduTracer
 from pySim.transport.pcsc import PcscSimLink
@@ -50,74 +50,97 @@ def connect_to_card(slot_nr:int):
 
     return tp, scc, card
 
+class ApiError:
+    def __init__(self, msg:str, sw=None):
+        self.msg = msg
+        self.sw = sw
 
-@route('/sim-auth-api/v1/slot/<int:slot>')
-def auth(request, slot):
-    """REST API endpoint for performing authentication against a USIM.
-       Expects a JSON body containing RAND and AUTN.
-       Returns a JSON body containing RES, CK, IK and Kc."""
-    try:
-        # there are two hex-string JSON parameters in the body: rand and autn
-        content = json.loads(request.content.read())
-        rand = content['rand']
-        autn = content['autn']
-    except:
-        request.setResponseCode(400)
-        return "Malformed Request"
+    def __str__(self):
+        d = {'error': {'message':self.msg}}
+        if self.sw:
+            d['error']['status_word'] = self.sw
+        return json.dumps(d)
 
-    try:
-        tp, scc, card = connect_to_card(slot)
-    except ReaderError:
-        request.setResponseCode(404)
-        return "Specified SIM Slot doesn't exist"
-    except ProtocolError:
-        request.setResponseCode(500)
-        return "Error"
-    except NoCardError:
+
+def set_headers(request):
+    request.setHeader('Content-Type', 'application/json')
+
+class SimRestServer:
+    app = Klein()
+
+    @app.handle_errors(NoCardError)
+    def no_card_error(self, request, failure):
+        set_headers(request)
         request.setResponseCode(410)
-        return "No SIM card inserted in slot"
+        return str(ApiError("No SIM card inserted in slot"))
 
-    try:
+    @app.handle_errors(ReaderError)
+    def reader_error(self, request, failure):
+        set_headers(request)
+        request.setResponseCode(404)
+        return str(ApiError("Reader Error: Specified SIM Slot doesn't exist"))
+
+    @app.handle_errors(ProtocolError)
+    def protocol_error(self, request, failure):
+        set_headers(request)
+        request.setResponseCode(500)
+        return str(ApiError("Protocol Error: %s" % failure.value))
+
+    @app.handle_errors(SwMatchError)
+    def sw_match_error(self, request, failure):
+        set_headers(request)
+        request.setResponseCode(500)
+        sw = failure.value.sw_actual
+        if sw == '9862':
+            return str(ApiError("Card Authentication Error - Incorrect MAC", sw))
+        elif sw == '6982':
+            return str(ApiError("Security Status not satisfied - Card PIN enabled?", sw))
+        else:
+            return str(ApiError("Card Communication Error %s" % failure.value), sw)
+
+
+    @app.route('/sim-auth-api/v1/slot/<int:slot>')
+    def auth(self, request, slot):
+        """REST API endpoint for performing authentication against a USIM.
+           Expects a JSON body containing RAND and AUTN.
+           Returns a JSON body containing RES, CK, IK and Kc."""
+        try:
+            # there are two hex-string JSON parameters in the body: rand and autn
+            content = json.loads(request.content.read())
+            rand = content['rand']
+            autn = content['autn']
+        except:
+            set_headers(request)
+            request.setResponseCode(400)
+            return str(ApiError("Malformed Request"))
+
+        tp, scc, card = connect_to_card(slot)
+
         card.select_adf_by_aid(adf='usim')
         res, sw = scc.authenticate(rand, autn)
-    except SwMatchError as e:
-        request.setResponseCode(500)
-        return "Communication Error %s" % e
 
-    tp.disconnect()
+        tp.disconnect()
 
-    return json.dumps(res, indent=4)
+        set_headers(request)
+        return json.dumps(res, indent=4)
 
-@route('/sim-info-api/v1/slot/<int:slot>')
-def info(request, slot):
-    """REST API endpoint for obtaining information about an USIM.
-    Expects empty body in request.
-    Returns a JSON body containing ICCID, IMSI."""
+    @app.route('/sim-info-api/v1/slot/<int:slot>')
+    def info(self, request, slot):
+        """REST API endpoint for obtaining information about an USIM.
+        Expects empty body in request.
+        Returns a JSON body containing ICCID, IMSI."""
 
-    try:
         tp, scc, card = connect_to_card(slot)
-    except ReaderError:
-        request.setResponseCode(404)
-        return "Specified SIM Slot doesn't exist"
-    except ProtocolError:
-        request.setResponseCode(500)
-        return "Error"
-    except NoCardError:
-        request.setResponseCode(410)
-        return "No SIM card inserted in slot"
 
-    try:
         card.select_adf_by_aid(adf='usim')
         iccid, sw = card.read_iccid()
         imsi, sw = card.read_imsi()
         res = {"imsi": imsi, "iccid": iccid }
-    except SwMatchError as e:
-        request.setResponseCode(500)
-        return "Communication Error %s" % e
 
-    tp.disconnect()
+        tp.disconnect()
 
-    return json.dumps(res, indent=4)
+        set_headers(request)
+        return json.dumps(res, indent=4)
 
 
 def main(argv):
@@ -128,7 +151,8 @@ def main(argv):
 
     args = parser.parse_args()
 
-    run(args.host, args.port)
+    srr = SimRestServer()
+    srr.app.run(args.host, args.port)
 
 if __name__ == "__main__":
     main(sys.argv)
